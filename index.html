@@ -119,6 +119,7 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 					<!-- Export Button -->
 					<button
 						class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors flex items-center"
+						onclick="window.print()"
 					>
 						<i class="fas fa-file-pdf mr-2"></i>
 						Export as PDF
@@ -186,6 +187,8 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 			const historyBtn = document.getElementById('history-btn');
 			const historySidebar = document.getElementById('history-sidebar');
 			const closeHistoryBtn = document.getElementById('close-history');
+			const historyContent = document.getElementById('history-content');
+			const inputText = document.getElementById('input-text');
 
 			const categoriesList = [
 				'insult',
@@ -218,9 +221,7 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 				return fetch('http://157.230.67.6:8000/check', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						text: document.getElementById('input-text').value,
-					}),
+					body: JSON.stringify({ text: inputText.value }),
 				}).then((res) => {
 					if (!res.ok) throw new Error(`HTTP error ${res.status}`);
 					return res.json();
@@ -250,11 +251,84 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 					barWrapper.appendChild(bar);
 
 					const label = document.createElement('span');
-					label.className = 'text-sm text-gray-600 mt-2';
+					label.className = 'text-sm text-gray-600 mt-2 text-center';
 					label.textContent = cat.replace(/_/g, ' ').toUpperCase();
 					barWrapper.appendChild(label);
 
 					barsContainer.appendChild(barWrapper);
+				});
+			}
+
+			function saveToHistory(entry) {
+				const history = JSON.parse(
+					localStorage.getItem('toxicityHistory') || '[]'
+				);
+				history.unshift(entry);
+				localStorage.setItem(
+					'toxicityHistory',
+					JSON.stringify(history.slice(0, 20))
+				); // keep last 20
+			}
+
+			function renderHistory() {
+				const history = JSON.parse(
+					localStorage.getItem('toxicityHistory') || '[]'
+				);
+				if (history.length === 0) {
+					historyContent.innerHTML = `<p class="text-gray-600">No history yet.</p>`;
+					return;
+				}
+
+				historyContent.innerHTML = ''; // Clear previous
+
+				history.forEach((item, index) => {
+					const entryDiv = document.createElement('div');
+					entryDiv.className =
+						'mb-4 p-3 bg-white rounded-lg shadow border cursor-pointer hover:bg-gray-100 transition';
+					entryDiv.innerHTML = `
+			<div class="text-sm text-gray-500">${new Date(
+				item.timestamp
+			).toLocaleString()}</div>
+			<div class="text-gray-800 font-medium mt-1 mb-1">Score: ${item.score.toFixed(
+				1
+			)} / 10</div>
+			<div class="text-sm text-gray-700 line-clamp-3">${item.text}</div>
+		`;
+
+					entryDiv.addEventListener('click', () => {
+						// Restore the text
+						inputText.value = item.text;
+
+						// Recompute the results (optional – skip API and store categories too if needed)
+						toxicityScoreEl.textContent = `${item.score.toFixed(1)} / 10`;
+
+						// If you want categories in history, store them too and render here:
+						if (item.categories) {
+							renderBars(item.categories);
+						} else {
+							barsContainer.innerHTML =
+								'<p class="text-gray-500 text-sm">Category data unavailable.</p>';
+						}
+
+						// If highlightedText was saved (optional)
+						if (item.highlightedText) {
+							highlightedTextEl.innerHTML = item.highlightedText;
+						} else {
+							highlightedTextEl.innerHTML =
+								'<p class="text-gray-400 text-sm">No highlighted text saved.</p>';
+						}
+
+						resultsSection.classList.remove('hidden');
+						loadingSpinner.classList.add('hidden');
+
+						window.scrollTo({
+							top: resultsSection.offsetTop - 80,
+							behavior: 'smooth',
+						});
+						historySidebar.classList.add('translate-x-full');
+					});
+
+					historyContent.appendChild(entryDiv);
 				});
 			}
 
@@ -263,11 +337,22 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 				loadingSpinner.classList.remove('hidden');
 				try {
 					const result = await simulateApiCall();
-					toxicityScoreEl.textContent = `${result.toxicityScore.toFixed(
-						1
-					)} / 10`;
-					renderBars(result.categories);
-					highlightedTextEl.innerHTML = result.highlightedText;
+					const { toxicityScore, categories, highlightedText } = result;
+
+					toxicityScoreEl.textContent = `${toxicityScore.toFixed(1)} / 10`;
+					renderBars(categories);
+					highlightedTextEl.innerHTML = highlightedText;
+
+					const entry = {
+						text: inputText.value,
+						score: toxicityScore,
+						timestamp: Date.now(),
+						categories,
+						highlightedText,
+					};
+					saveToHistory(entry);
+					renderHistory();
+
 					resultsSection.classList.remove('hidden');
 				} catch (err) {
 					alert('Analysis failed. Try again later.');
@@ -278,21 +363,12 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 
 			function toggleHistorySidebar() {
 				historySidebar.classList.toggle('translate-x-full');
+				if (!historySidebar.classList.contains('translate-x-full'))
+					renderHistory();
 			}
 
 			historyBtn.addEventListener('click', toggleHistorySidebar);
 			closeHistoryBtn.addEventListener('click', toggleHistorySidebar);
-
-			// Optional: close if clicked outside
-			document.addEventListener('click', (e) => {
-				if (
-					!historySidebar.contains(e.target) &&
-					!historyBtn.contains(e.target) &&
-					!historySidebar.classList.contains('translate-x-full')
-				) {
-					historySidebar.classList.add('translate-x-full');
-				}
-			});
 		</script>
 	</body>
 </html>
