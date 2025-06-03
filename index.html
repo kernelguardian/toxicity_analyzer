@@ -13,18 +13,17 @@
 	<body
 		class="min-h-screen bg-gradient-to-r from-indigo-100 via-purple-100 to-pink-100 font-sans"
 	>
+		<!-- Navbar -->
 		<header
-			class="bg-white/30 backdrop-blur-md border-b border-white/30 px-6 py-4 shadow-md sticky top-0 z-50"
+			class="bg-white/30 backdrop-blur-md border-b border-white/30 px-6 py-4 shadow-md sticky top-0 z-[60]"
 		>
 			<div class="flex items-center justify-between max-w-7xl mx-auto">
-				<!-- Left side - Logo and Navigation -->
 				<div class="flex items-center space-x-8">
 					<h1 class="text-2xl font-bold text-gray-900">ToxiCheck</h1>
 				</div>
-
-				<!-- Right side - History button -->
 				<div class="flex items-center space-x-4">
 					<button
+						id="history-btn"
 						class="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
 					>
 						<i class="fas fa-clock mr-2"></i>
@@ -36,7 +35,7 @@
 
 		<!-- Main Content -->
 		<main
-			class="max-w-4xl mx-auto px-6 py-8 bg-white/30 backdrop-blur-md rounded-xl shadow-lg border border-white/30 mt-8"
+			class="max-w-6xl mx-auto px-6 py-8 bg-white/30 backdrop-blur-md rounded-xl shadow-lg border border-white/30 mt-8"
 		>
 			<!-- Enter Text Section -->
 			<section class="mb-8">
@@ -66,8 +65,6 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 			<!-- Results Section -->
 			<section id="results-section" class="hidden">
 				<h2 class="text-3xl font-semibold text-gray-900 mb-6">Results</h2>
-
-				<!-- Toxicity Analysis Card -->
 				<div
 					class="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-md"
 				>
@@ -116,9 +113,7 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 						<div
 							id="highlighted-text"
 							class="bg-gray-50 p-4 rounded-lg text-gray-700 text-lg"
-						>
-							<!-- Text will go here -->
-						</div>
+						></div>
 					</div>
 
 					<!-- Export Button -->
@@ -131,7 +126,7 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 				</div>
 			</section>
 
-			<!-- Spinner Section -->
+			<!-- Spinner -->
 			<section
 				id="loading-spinner"
 				class="hidden flex justify-center items-center py-12"
@@ -159,16 +154,39 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 			</section>
 		</main>
 
+		<!-- History Sidebar -->
+		<div
+			id="history-sidebar"
+			class="fixed top-[72px] right-0 h-[calc(100%-72px)] w-80 bg-white/80 backdrop-blur-md border-l border-gray-300 shadow-lg transform translate-x-full transition-transform duration-300 z-40"
+		>
+			<div
+				class="flex items-center justify-between px-4 py-4 border-b border-gray-300"
+			>
+				<h2 class="text-xl font-semibold text-gray-900">History</h2>
+				<button
+					id="close-history"
+					class="text-gray-600 hover:text-gray-900 text-lg"
+				>
+					<i class="fas fa-times"></i>
+				</button>
+			</div>
+			<div id="history-content" class="p-4 overflow-y-auto h-full">
+				<p class="text-gray-600">No history yet.</p>
+			</div>
+		</div>
+
 		<script>
 			const analyzeBtn = document.getElementById('analyze-btn');
 			const resultsSection = document.getElementById('results-section');
 			const loadingSpinner = document.getElementById('loading-spinner');
-
 			const toxicityScoreEl = document.getElementById('toxicity-score');
 			const highlightedTextEl = document.getElementById('highlighted-text');
 			const barsContainer = document.getElementById('bars-container');
 
-			// The 11 categories you want to handle
+			const historyBtn = document.getElementById('history-btn');
+			const historySidebar = document.getElementById('history-sidebar');
+			const closeHistoryBtn = document.getElementById('close-history');
+
 			const categoriesList = [
 				'insult',
 				'threat',
@@ -182,66 +200,48 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 				'flirtation',
 			];
 
-			// Colors for each category for clarity (you can adjust)
 			const categoryColors = {
-				insult: '#2563EB', // blue-600
-				threat: '#DC2626', // red-600
-				obscene: '#D97706', // amber-600
-				hate: '#9333EA', // purple-600
-				sexual_explicit: '#DB2777', // pink-600
-				identity_attack: '#14B8A6', // teal-500
-				profanity: '#F59E0B', // amber-500
-				toxicity: '#EF4444', // red-500
-				severe_toxicity: '#B91C1C', // red-700
-				flirtation: '#8B5CF6', // violet-500
-				other: '#4B5563', // gray-600
+				insult: '#2563EB',
+				threat: '#DC2626',
+				obscene: '#D97706',
+				hate: '#9333EA',
+				sexual_explicit: '#DB2777',
+				identity_attack: '#14B8A6',
+				profanity: '#F59E0B',
+				toxicity: '#EF4444',
+				severe_toxicity: '#B91C1C',
+				flirtation: '#8B5CF6',
+				other: '#4B5563',
 			};
 
 			function simulateApiCall() {
-				return fetch('http://127.0.0.1:8000/check', {
+				return fetch('http://157.230.67.6:8000/check', {
 					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
+					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						text: document.getElementById('input-text').value,
 					}),
-				})
-					.then((response) => {
-						if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-						return response.json();
-					})
-					.then((data) => {
-						const resultText = data.result || '{}';
-						try {
-							return data;
-						} catch (err) {
-							console.error('Failed to parse model response:', resultText);
-							throw err;
-						}
-					});
+				}).then((res) => {
+					if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+					return res.json();
+				});
 			}
 
 			function renderBars(categories) {
-				barsContainer.innerHTML = ''; // Clear old bars
-
-				const maxBarHeight = 180; // px
-
+				barsContainer.innerHTML = '';
+				const maxBarHeight = 180;
 				categoriesList.forEach((cat) => {
 					const value = categories[cat] ?? 0;
 					const heightPx = value * maxBarHeight;
 
-					// Create bar container
 					const barWrapper = document.createElement('div');
 					barWrapper.className = 'flex flex-col items-center';
 
-					// Percentage label above the bar
 					const percentLabel = document.createElement('div');
 					percentLabel.className = 'text-sm text-gray-700 mb-1 font-semibold';
 					percentLabel.textContent = `${(value * 100).toFixed(1)}%`;
 					barWrapper.appendChild(percentLabel);
 
-					// Bar itself
 					const bar = document.createElement('div');
 					bar.style.height = heightPx + 'px';
 					bar.style.width = '48px';
@@ -249,11 +249,9 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 					bar.className = 'rounded-t transition-all duration-500';
 					barWrapper.appendChild(bar);
 
-					// Category label below
 					const label = document.createElement('span');
 					label.className = 'text-sm text-gray-600 mt-2';
-					label.textContent = cat.replace(/_/g, ' ');
-					label.textContent = label.textContent.toUpperCase();
+					label.textContent = cat.replace(/_/g, ' ').toUpperCase();
 					barWrapper.appendChild(label);
 
 					barsContainer.appendChild(barWrapper);
@@ -263,24 +261,36 @@ Wow, your brain must be on permanent vacation. It's amazing how someone can be t
 			analyzeBtn.addEventListener('click', async () => {
 				resultsSection.classList.add('hidden');
 				loadingSpinner.classList.remove('hidden');
-
 				try {
 					const result = await simulateApiCall();
-
 					toxicityScoreEl.textContent = `${result.toxicityScore.toFixed(
 						1
 					)} / 10`;
-
 					renderBars(result.categories);
-
 					highlightedTextEl.innerHTML = result.highlightedText;
-
 					resultsSection.classList.remove('hidden');
-				} catch (error) {
-					console.error('Error during analysis:', error);
-					alert('Failed to analyze text. Please try again at a later time.');
+				} catch (err) {
+					alert('Analysis failed. Try again later.');
 				} finally {
 					loadingSpinner.classList.add('hidden');
+				}
+			});
+
+			function toggleHistorySidebar() {
+				historySidebar.classList.toggle('translate-x-full');
+			}
+
+			historyBtn.addEventListener('click', toggleHistorySidebar);
+			closeHistoryBtn.addEventListener('click', toggleHistorySidebar);
+
+			// Optional: close if clicked outside
+			document.addEventListener('click', (e) => {
+				if (
+					!historySidebar.contains(e.target) &&
+					!historyBtn.contains(e.target) &&
+					!historySidebar.classList.contains('translate-x-full')
+				) {
+					historySidebar.classList.add('translate-x-full');
 				}
 			});
 		</script>
