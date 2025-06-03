@@ -209,3 +209,5 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/dotenv,python,macos
+.vscode/settings.json
+app/me.json
