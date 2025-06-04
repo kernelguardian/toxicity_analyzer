@@ -64,7 +64,9 @@ async def analyze_toxicity(input: TextInput):
                 text="""Analyse text content in double quotes and respond back only in json format by this guideline
 REQUIREMENTS
 1. toxicity score should be out of 10, follow rigid internal structure to get a score
-2. highlighted text should be html supported highlighted problematic words with underline or bolded
+2. highlighted text should be html supported highlighted problematic words with  bold styling and wavy underline colored (tailwindcss class: 'underline decoration-red-500 font-bold')  use whatever instyling to make it look good
+
+
     3. Anchor toxicity score based on this data [
     score 1: Well, that was brilliant, as usual.
     score 5: You're either completely clueless or just lazy.
