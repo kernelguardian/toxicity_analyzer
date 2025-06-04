@@ -15,7 +15,7 @@ app = FastAPI()
 origins = [
     "http://127.0.0.1:5501",
     "http://localhost:5501",
-    "https://alanapi.kernelguardian.com",
+    "https://toxicity-analyzer.vercel.app/",
 ]  # For dev only — lock this down in prod!
 
 app.add_middleware(
